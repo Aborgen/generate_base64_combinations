@@ -1,15 +1,20 @@
-use std::cmp::min;
+use std::cmp;
 use std::collections::HashSet;
 use std::fs::OpenOptions;
 use std::io::{BufWriter, Write};
 
+use rayon::prelude::*;
+use rayon::ThreadPoolBuilder;
+
 fn main() {
-  let digit_count = 1;
+  ThreadPoolBuilder::new().num_threads(7).build_global().unwrap();
+
+
+  let digit_count = 5;
   let n = 64_i64.pow(digit_count);
   let group_size = 30000000; // 30MB
   let product: i64 = (n as f64 / group_size as f64).ceil() as i64;
 
-  let mut file_count = 0;
   (0..product)
     .into_iter()
     .map(|i| {
@@ -22,18 +27,21 @@ fn main() {
         };
 
         let start: i64 = (i * group_size) + offset;
-        let end: i64 = min((i + 1) * group_size + offset, n);
+        let end: i64 = cmp::min((i + 1) * group_size + offset, n);
         
         start..end
     })
-    .for_each(|range| {
+    .collect::<Vec<_>>()
+    .par_iter_mut()
+    .enumerate()
+    .for_each(|(index, range)| {
+      let filename = format!("file_{}", index);
       let set: HashSet<String> = HashSet::new();
-      let filename = format!("file_{}", file_count);
       let f = OpenOptions::new()
         .write(true)
         .create_new(true)
-        .open(filename).unwrap();
-      println!("Range: {:?}", range);
+        .open(&filename).unwrap();
+      println!("Range: {:?}, {}", range, filename);
       {
         let mut writer = BufWriter::new(f);
         for i in range {
@@ -44,8 +52,6 @@ fn main() {
           }
         }
       }
-      
-      file_count += 1;
     });
 }
 
