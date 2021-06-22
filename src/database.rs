@@ -50,6 +50,7 @@ impl DatabaseActions {
     match &mut self.connection {
       None => panic!("Tried to connect without a connection to the database!"),
       Some(connection) => {
+        let key = format!("length_{}", key);
         connection.zrangebyscore(key, start, end)
       }
     }
